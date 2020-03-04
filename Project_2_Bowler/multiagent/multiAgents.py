@@ -190,13 +190,12 @@ class MinimaxAgent(MultiAgentSearchAgent):
             extremeScore = 999_999
 
         extremeAction = None
-
         actions = gameState.getLegalActions(agent)
 
         for action in actions:
             "Generate all legal actions from the pacman moves"
             successorGameState = gameState.generateSuccessor(agent, action)
-            score, a = self.minimax(successorGameState, depth, agent + 1)
+            score, act = self.minimax(successorGameState, depth, agent + 1)
             if agent == 0:
                 if score > extremeScore:
                     extremeScore = score
@@ -219,7 +218,52 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        maxScore, maxAction = self.minimax(gameState, self.depth, 0, -999_999, 999_999)
+        return maxAction
+
+
+    def minimax(self, gameState, depth, agent, a, b):
+        "All the ghosts have had their turn, pacman's turn and move down a level in the tree"
+        numGhosts = gameState.getNumAgents() - 1
+        if agent > numGhosts:
+            depth = depth - 1
+            agent = 0
+
+        if depth is 0 or (gameState.isLose() or gameState.isWin()):
+            "Made it down to a leaf or an end state"
+            return tuple((self.evaluationFunction(gameState), ""))
+
+        return self.takeTurn(gameState, depth, agent, a, b)
+
+    def takeTurn(self, gameState, depth, agent, a, b):
+        if agent is 0:
+            extremeScore = -999_999
+        else:
+            extremeScore = 999_999
+
+        extremeAction = None
+        actions = gameState.getLegalActions(agent)
+
+        for action in actions:
+            "Generate all legal actions from the pacman moves"
+            successorGameState = gameState.generateSuccessor(agent, action)
+            score, act = self.minimax(successorGameState, depth, agent + 1, a, b)
+            if agent == 0:
+                if score > extremeScore:
+                    extremeScore = score
+                    extremeAction = action
+                if extremeScore > b:
+                    return tuple((extremeScore, extremeAction))
+                a = max(a, score)
+            else:
+                if score < extremeScore:
+                    extremeScore = score
+                    extremeAction = action
+                if extremeScore < a:
+                    return tuple((extremeScore, extremeAction))
+                b = min(b, score)
+        return tuple((extremeScore, extremeAction))
+
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
@@ -234,7 +278,44 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         legal moves.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        maxScore, maxAction = self.expectimax(gameState, self.depth, 0)
+        return maxAction
+
+    def expectimax(self, gameState, depth, agent):
+        "All the ghosts have had their turn, pacman's turn and move down a level in the tree"
+        numGhosts = gameState.getNumAgents() - 1
+        if agent > numGhosts:
+            depth = depth - 1
+            agent = 0
+
+        if depth is 0 or (gameState.isLose() or gameState.isWin()):
+            "Made it down to a leaf or an end state"
+            return tuple((self.evaluationFunction(gameState), ""))
+
+        return self.takeTurn(gameState, depth, agent)
+
+    def takeTurn(self, gameState, depth, agent):
+        if agent is 0:
+            extremeScore = -999_999
+        else:
+            extremeScore = 999_999
+
+        extremeAction = None
+        actions = gameState.getLegalActions(agent)
+
+        for action in actions:
+            "Generate all legal actions from the pacman moves"
+            successorGameState = gameState.generateSuccessor(agent, action)
+            score, act = self.expectimax(successorGameState, depth, agent + 1)
+            if agent == 0:
+                if score > extremeScore:
+                    extremeScore = score
+                    extremeAction = action
+            else:
+                if score < extremeScore:
+                    extremeScore = score
+                    extremeAction = action
+        return tuple((extremeScore, extremeAction))
 
 def betterEvaluationFunction(currentGameState):
     """
