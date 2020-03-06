@@ -75,6 +75,7 @@ class ReflexAgent(Agent):
         newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
         "*** YOUR CODE HERE ***"
+        isScared = False
 
         "There will be a ghost there"
         if successorGameState.isLose():
@@ -88,10 +89,14 @@ class ReflexAgent(Agent):
         closeGhost = 999_999
         for i in range(0,len(newGhostStates)):
             if newScaredTimes[i] == 0:
-                ghostPos = successorGameState.getGhostPosition(i+1);
-                ghostDist = manhattanDistance(ghostPos, newPos)
-                if ghostDist < closeGhost:
-                    closeGhost = ghostDist
+                isScared = False
+            else:
+                isScared = True
+
+            ghostPos = successorGameState.getGhostPosition(i+1);
+            ghostDist = manhattanDistance(ghostPos, newPos)
+            if ghostDist < closeGhost:
+                closeGhost = ghostDist
 
         "Find closest food"
         closeFood = 999_999
@@ -103,8 +108,12 @@ class ReflexAgent(Agent):
         "Score of the action state"
         score = scoreEvaluationFunction(successorGameState)
 
-        "Score minus a weight of food over ghost"
-        return score - closeFood/closeGhost
+        if not isScared:
+            "Score + weight towards food - weight away from scary ghost"
+            return score + 8.0 / closeFood - 16.0 / closeGhost
+        else:
+            "Score + weight towards food + weight toward scared ghost"
+            return score + 8.0 / closeFood + 16.0 / closeGhost
 
 
 def scoreEvaluationFunction(currentGameState):
@@ -141,6 +150,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
     """
     Your minimax agent (question 2)
     """
+    pacman = 0
 
     def getAction(self, gameState):
         """
@@ -167,7 +177,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
         """
         "*** YOUR CODE HERE ***"
 
-        maxScore, maxAction = self.minimax(gameState, self.depth, 0)
+        maxScore, maxAction = self.minimax(gameState, self.depth, self.pacman)
         return maxAction
 
     def minimax(self, gameState, depth, agent):
@@ -175,7 +185,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
         numGhosts = gameState.getNumAgents() - 1
         if agent > numGhosts:
             depth = depth - 1
-            agent = 0
+            agent = self.pacman
 
         if depth is 0 or (gameState.isLose() or gameState.isWin()):
             "Made it down to a leaf or an end state"
@@ -184,7 +194,8 @@ class MinimaxAgent(MultiAgentSearchAgent):
         return self.takeTurn(gameState, depth, agent)
 
     def takeTurn(self, gameState, depth, agent):
-        if agent is 0:
+
+        if agent is self.pacman:
             extremeScore = -999_999
         else:
             extremeScore = 999_999
@@ -196,14 +207,17 @@ class MinimaxAgent(MultiAgentSearchAgent):
             "Generate all legal actions from the pacman moves"
             successorGameState = gameState.generateSuccessor(agent, action)
             score, act = self.minimax(successorGameState, depth, agent + 1)
-            if agent == 0:
+            if agent is self.pacman:
+                "Maximizing"
                 if score > extremeScore:
                     extremeScore = score
                     extremeAction = action
             else:
                 if score < extremeScore:
+                    "Minimizing"
                     extremeScore = score
                     extremeAction = action
+
         return tuple((extremeScore, extremeAction))
 
 
@@ -212,13 +226,14 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
     """
     Your minimax agent with alpha-beta pruning (question 3)
     """
+    pacman = 0
 
     def getAction(self, gameState):
         """
         Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
-        maxScore, maxAction = self.minimax(gameState, self.depth, 0, -999_999, 999_999)
+        maxScore, maxAction = self.minimax(gameState, self.depth, self.pacman, -999_999, 999_999)
         return maxAction
 
 
@@ -227,7 +242,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         numGhosts = gameState.getNumAgents() - 1
         if agent > numGhosts:
             depth = depth - 1
-            agent = 0
+            agent = self.pacman
 
         if depth is 0 or (gameState.isLose() or gameState.isWin()):
             "Made it down to a leaf or an end state"
@@ -236,7 +251,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         return self.takeTurn(gameState, depth, agent, a, b)
 
     def takeTurn(self, gameState, depth, agent, a, b):
-        if agent is 0:
+        if agent is self.pacman:
             extremeScore = -999_999
         else:
             extremeScore = 999_999
@@ -248,19 +263,27 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
             "Generate all legal actions from the pacman moves"
             successorGameState = gameState.generateSuccessor(agent, action)
             score, act = self.minimax(successorGameState, depth, agent + 1, a, b)
-            if agent == 0:
+
+            if agent is self.pacman:
+                "Maximizing"
                 if score > extremeScore:
                     extremeScore = score
                     extremeAction = action
                 if extremeScore > b:
+                    "Beta check"
                     return tuple((extremeScore, extremeAction))
+                "Update alpha"
                 a = max(a, score)
+
             else:
                 if score < extremeScore:
+                    "minimizing"
                     extremeScore = score
                     extremeAction = action
                 if extremeScore < a:
+                    "alpha check"
                     return tuple((extremeScore, extremeAction))
+                "Update beta"
                 b = min(b, score)
         return tuple((extremeScore, extremeAction))
 
@@ -269,6 +292,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
     """
       Your expectimax agent (question 4)
     """
+    pacman = 0
 
     def getAction(self, gameState):
         """
@@ -278,7 +302,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         legal moves.
         """
         "*** YOUR CODE HERE ***"
-        maxScore, maxAction = self.expectimax(gameState, self.depth, 0)
+        maxScore, maxAction = self.expectimax(gameState, self.depth, self.pacman)
         return maxAction
 
     def expectimax(self, gameState, depth, agent):
@@ -286,46 +310,112 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         numGhosts = gameState.getNumAgents() - 1
         if agent > numGhosts:
             depth = depth - 1
-            agent = 0
+            agent = self.pacman
 
-        if depth is 0 or (gameState.isLose() or gameState.isWin()):
+        if depth == 0 or (gameState.isLose() or gameState.isWin()):
             "Made it down to a leaf or an end state"
             return tuple((self.evaluationFunction(gameState), ""))
 
         return self.takeTurn(gameState, depth, agent)
 
     def takeTurn(self, gameState, depth, agent):
-        if agent is 0:
+
+        if agent is self.pacman:
             extremeScore = -999_999
         else:
-            extremeScore = 999_999
+            extremeScore = 0
 
         extremeAction = None
         actions = gameState.getLegalActions(agent)
+
+        "Used in expecti portion"
+        probability = (1.0 / len(actions))
 
         for action in actions:
             "Generate all legal actions from the pacman moves"
             successorGameState = gameState.generateSuccessor(agent, action)
             score, act = self.expectimax(successorGameState, depth, agent + 1)
-            if agent == 0:
+            if agent is self.pacman:
+                "Find the max score of all actions"
                 if score > extremeScore:
                     extremeScore = score
                     extremeAction = action
             else:
-                if score < extremeScore:
-                    extremeScore = score
-                    extremeAction = action
+                "Find the average value of the actions"
+                extremeScore = extremeScore + probability * score
+                extremeAction = None
+
         return tuple((extremeScore, extremeAction))
+
+
+
 
 def betterEvaluationFunction(currentGameState):
     """
     Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
     evaluation function (question 5).
 
-    DESCRIPTION: <write something here so we know what you did>
+    DESCRIPTION: I very closely followed my reactive agent code from above.
+
+    First I take a look at if the game state will result in a win or a loss.
+    If not then I find the closest food and the closest ghost.
+
+    The weights are such that we want to move towards the food (positive)
+    and away from the ghost (negative)
+
+    Further, if the ghost is farther away, we rate them with less importance
+    same for food. The closer the food the more motivated he is to get it,
+    and the closer the ghost the more motivated he is to stay away.
+
+    Finally, if the ghosts are scared, then pacman chases them down, maximizing
+    his score just a little bit more.
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+
+    newPos = currentGameState.getPacmanPosition()
+    newFood = currentGameState.getFood().asList()
+    newGhostStates = currentGameState.getGhostStates()
+    newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
+    isScared = False
+
+    "There will be a ghost there"
+    if currentGameState.isLose():
+        return -999_999
+
+    "We will eat all the dots there"
+    if currentGameState.isWin():
+        return 999_999
+
+    "Find closest ghost"
+    closeGhost = 999_999
+    for i in range(0, len(newGhostStates)):
+        "Is the closest ghost scared?"
+        if newScaredTimes[i] == 0:
+            isScared = False
+        else:
+            isScared = True
+
+        ghostPos = currentGameState.getGhostPosition(i + 1);
+        ghostDist = manhattanDistance(ghostPos, newPos)
+        if ghostDist < closeGhost:
+            closeGhost = ghostDist
+
+    "Find closest food"
+    closeFood = 999_999
+    for foodPos in newFood:
+        foodDist = manhattanDistance(foodPos, newPos)
+        if foodDist < closeFood:
+            closeFood = foodDist
+
+    score = currentGameState.getScore()
+
+    if not isScared:
+        "Score + weight towards food - weight away from scary ghost"
+        return score + 8.0 / closeFood - 16.0 / closeGhost
+    else:
+        "Score + weight towards food + weight toward scared ghost"
+        return score + 8.0 / closeFood + 16.0 / closeGhost
+
 
 # Abbreviation
 better = betterEvaluationFunction
